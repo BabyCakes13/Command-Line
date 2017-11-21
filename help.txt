@@ -1,0 +1,9 @@
+HELP
+
+This is the help section of the terminal.
+
+What you can do:
+
+1. "exit" - terminates the program
+2. "help" - shows information about the program and how to use it
+3. anything else - command not found
