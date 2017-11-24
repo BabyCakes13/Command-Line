@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 
@@ -29,24 +30,71 @@ boolean interpret(char* command){
     }
 }
 
+//pune hei la inceputul programului si dupa continua normal, daca apas help imi da wrror in execl
 boolean handle_help(){
+
+    pid_t child = fork();
+
+    if(child < 0){
+
+        printf("Error: fork() failed to create.\n");
+        exit(-1);
+
+    }
+
+    if(child == 0){
+
+        printf("(In child)\n");
+
+        int help = execl("home/babycakes/Documents/Command Line Interpreter/Handle Help/help", "help", "-1", NULL);
+
+        if(help < 0){
+
+            perror("Error in e");
+
+        }
+
+    }else{
+
+        printf("(In parent)\n");
+
+        if(wait(0) == -1){
+
+            perror("Error in wait: ");
+
+        }
+
+    }
+
+    return true;
 
 }
 
 void open_interpreter(){
+
     boolean work = true;
     char* command;
 
     while(work){
+
         command = read_line();
         work = interpret(command);
+
     }
 }
 
 char* read_line(){
+
     char* command;
+
     command = readline(">");
     add_history(command);
+
     return command;
+
+}
+
+void open(){
+
 }
 
