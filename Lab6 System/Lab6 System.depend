@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1511788494 source:/home/babycakes/Documents/Command Line Interpreter/Lab6 System/main.c
+	<stdio.h>
+	<stdlib.h>
+	<signal.h>
+
