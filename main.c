@@ -161,29 +161,52 @@ void signalHandler(int mysignal){
 
 void handle_tee(char** commands){
 
-      int i = 1;
-      char** textFiles = NULL;
-      boolean isTextFile;
+    char* textFiles[500];
+    int numberFiles = 0;
+    boolean isTextFile;
 
-      while(commands[i] != NULL){
+    int i = 1;
+    while(commands[i] != NULL){
 
         isTextFile = check_text(commands[i]);
 
-        printf("%d\n", isTextFile);
+        if(isTextFile == 1)
+            numberFiles++;
+
         i++;
 
-      }
+    }
 
-    if(commands[1] != NULL){
+    if(numberFiles != 0){
 
-        FILE* newFile = fopen(commands[1], "w");
-        printf("success\n");
+         printf("\nNumber of files: %d\n", numberFiles);
 
+        for(i = 0; i < numberFiles; i++){
 
-        printf("\n");
+            textFiles[i] = (char*)malloc(sizeof(char)*300);
+
+        }
+
+        i = 0;
+        int j = 0;
+        while(commands[i] != NULL){
+
+            isTextFile = check_text(commands[i]);
+
+            if(isTextFile == 1){
+
+                strcpy(textFiles[j], commands[i]);
+                j++;
+
+            }
+
+            i++;
+
+        }
+
+        FILE* newFile = fopen(textFiles[0], "w");
 
         signal(SIGINT, signalHandler);
-
         char* text;
 
         keyPressed = false;
@@ -191,19 +214,31 @@ void handle_tee(char** commands){
         while(keyPressed == false){
 
             text = readline("");
-            fprintf(newFile,"%s\n", text);
+            fprintf(newFile, "%s\n", text);
             printf("%s\n", text);
 
         }
 
-        keyPressed = true;
         fclose(newFile);
 
     }else{
 
-        printf("There must be a name for the text file.\n");
+        signal(SIGINT, signalHandler);
+
+        keyPressed = false;
+
+        char* text;
+
+        while(keyPressed == false){
+
+            text = readline("");
+            printf("%s\n", text);
+
+        }
 
     }
+
+
 
 }
 
