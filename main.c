@@ -208,7 +208,18 @@ void handle_tee(char** commands){
 
         }
 
-        FILE* newFile = fopen(textFiles[0], "w");
+        FILE* newFile;
+
+        if(hasParameter == 0){
+
+            newFile = fopen(textFiles[0], "w");
+
+        }else{
+
+            newFile = fopen(textFiles[0], "a");
+
+        }
+
 
         signal(SIGINT, signalHandler);
 
@@ -219,7 +230,6 @@ void handle_tee(char** commands){
         while(keyPressed == false){
 
             text = readline("");
-
             fprintf(newFile, "%s\n", text);
             printf("%s\n", text);
 
@@ -236,11 +246,17 @@ void handle_tee(char** commands){
 
             for(i = 1; i < numberFiles; i++){
 
+                if(hasParameter == 0){
+
+                     newFile2 = fopen(textFiles[i], "w");
+
+                }else{
+
+                     newFile2 = fopen(textFiles[i], "a");
+
+                }
+
                 newFile = fopen(textFiles[0], "r");
-
-                printf("%d %s", i, textFiles[i]);
-
-                newFile2 = fopen(textFiles[i], "w");
 
                 letter = fgetc(newFile);
 
