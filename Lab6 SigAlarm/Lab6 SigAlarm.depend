@@ -1,6 +1,0 @@
-# depslib dependency file v1.0
-1511789415 source:/home/babycakes/Documents/Command Line Interpreter/Lab6 SigAlarm/main.c
-	<stdio.h>
-	<stdlib.h>
-	<signal.h>
-

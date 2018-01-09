@@ -6,13 +6,22 @@
 #include <readline/readline.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <signal.h>
 
-typedef enum{ false, true } boolean;
+typedef enum{ false, true} boolean;
+
+static volatile int keepRunning = 1;
 
 boolean interpret(char** arguments, char* command);
 void handle_help();
 void open_interpreter();
 void parse_command(char** argument, char* command);
+int handle_cd();
+int keyPressed = 1;
+void handle_yes();
+void handle_tee();
+void signalHandler(int mysignal);
+boolean check_text(char* string);
 
 int main(){
 
@@ -39,8 +48,8 @@ In parent, we wait for the child process to finish, then we read from the pipe t
 
     if(pipe(fd) < 0){
 
-        perror("Error in pipe: ");
         exit(-1);
+        perror("Error in pipe: ");
 
     }
 
@@ -72,9 +81,29 @@ In parent, we wait for the child process to finish, then we read from the pipe t
             close(fd[1]);
 
 
+        }else if(strcmp(command, "yes") == 0){
+
+            work = 3;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+
+        }else if(strcmp(command, "tee") == 0){
+
+            work = 4;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
         }else if(execvp(commands[0], commands) != -1){
 
             work = true;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }else if(strcmp(command, "cd") == 0){
+            //TODO
+
+            work = 2;
             write(fd[1], &work, sizeof(boolean));
             close(fd[1]);
 
@@ -97,26 +126,182 @@ In parent, we wait for the child process to finish, then we read from the pipe t
         read(fd[0], &work, sizeof(boolean));
         close(fd[0]);
 
-        if(work == false){
+        if(work == 2){
 
-            return false;
+            handle_cd(commands);
+            return true;
+
+        }else if(work == 3){
+
+            handle_yes(commands);
+            return true;
+
+        }else if(work == 4){
+
+            handle_tee(commands);
+            return true;
 
         }else{
 
-            return true;
+            return work;
+
+        }
+
+        return work;
+
+    }
+
+}
+
+void signalHandler(int mysignal){
+
+    keyPressed = true;
+
+}
+
+void handle_tee(char** commands){
+
+      int i = 1;
+      char** textFiles = NULL;
+      boolean isTextFile;
+
+      while(commands[i] != NULL){
+
+        isTextFile = check_text(commands[i]);
+
+        printf("%d\n", isTextFile);
+        i++;
+
+      }
+
+    if(commands[1] != NULL){
+
+        FILE* newFile = fopen(commands[1], "w");
+        printf("success\n");
+
+
+        printf("\n");
+
+        signal(SIGINT, signalHandler);
+
+        char* text;
+
+        keyPressed = false;
+
+        while(keyPressed == false){
+
+            text = readline("");
+            fprintf(newFile,"%s\n", text);
+            printf("%s\n", text);
+
+        }
+
+        keyPressed = true;
+        fclose(newFile);
+
+    }else{
+
+        printf("There must be a name for the text file.\n");
+
+    }
+
+}
+
+boolean check_text(char* string){
+
+    /*
+        This function checks if the arguments read from the command line represent a text file or not.
+    */
+
+    int i = 0, j = 0;
+    char newString[500], dotTxt[5];
+
+    strcpy(newString, string);
+
+    for(i = strlen(newString) - 4; i < strlen(newString); i++){
+
+        dotTxt[j] = newString[i];
+        j++;
+
+    }
+    dotTxt[j] = 0;
+
+    if(strcmp(dotTxt, ".txt") == 0){
+
+        return 1;
+
+    }else{
+
+        return 0;
+
+    }
+
+}
+void handle_yes(char** commands){
+
+    signal(SIGINT, signalHandler);
+
+    keyPressed = false;
+
+    int i = 1;
+
+    char commandsArray[500];
+
+    while(commands[i] != NULL){
+
+        strcat(commandsArray, commands[i]);
+        strcat(commandsArray, " ");
+        i++;
+
+    }
+
+    while(keyPressed == false){
+
+        if(strlen(commandsArray) > 0){
+
+             printf("%s\n", commandsArray);
+
+        }else{
+
+            printf("y\n");
+
+        }
+
+
+    }
+
+    keepRunning = true;
+
+}
+
+
+int handle_cd(char** commands){
+
+    if((strcmp(commands[1], " ") == 0) || (strcmp(commands[1], "~") == 0) || (strcmp(commands[1], "") == 0 || commands[1] == NULL)){
+
+        return chdir(getenv("HOME"));
+
+    }else{
+
+        if(chdir(commands[1]) != 0){
+
+            perror("Error in chdir(): ");
+
+        }else{
+
+            return chdir(commands[1]);
 
         }
 
     }
 
 }
-
 void handle_help(){
 
     printf("HELP\n");
 
     printf("Type 'exit' to exit\n");
-    printf("Type commands eg: cat text.txt, ls, etc\n");
+    printf("Type commands eg: yes this, cat text.txt, ls, etc\n");
 
 }
 
@@ -171,9 +356,12 @@ If that is the case, interpret
     boolean work = true;
     char* command;
     char* arguments[501];
+    long size = pathconf(".", _PC_PATH_MAX);
+    char* path;
 
     while(work){
 
+        printf("%s",getcwd(path, (size_t)size));
         command = readline(">");
         parse_command(arguments, command);
 

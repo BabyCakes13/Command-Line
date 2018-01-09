@@ -1,8 +1,12 @@
 # depslib dependency file v1.0
-1511278461 source:/home/babycakes/Documents/Command Line Interpreter/main.c
+1515516468 source:/home/babycakes/Documents/Command Line Interpreter/main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
+	<unistd.h>
 	<readline/history.h>
 	<readline/readline.h>
+	<sys/wait.h>
+	<sys/types.h>
+	<signal.h>
 
