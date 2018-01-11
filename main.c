@@ -161,6 +161,15 @@ void signalHandler(int mysignal){
 
 void handle_tee(char** commands){
 
+    /*
+    This function handles the tee command.
+    First, it check which of the words in the command line contain .txt, because there can be garbage values which are not taken in consideration.
+    It counts how many files there are, so it knows how many files it will create.
+    It also checks wether the tee command has -a parameter, for appending.
+    If there are no files, it just lets the user write and the text will be simply outputed in command line.
+    Else, we keep all the text files in an array, later opening the first file, taking the input from the command line, and close it. Then open and close the others also.
+    When the C^ is pressed, we will have the written text in all files opened with tee.
+    */
     char* textFiles[500];
     int numberFiles = 0;
     boolean isTextFile;
@@ -182,8 +191,6 @@ void handle_tee(char** commands){
     }
 
     if(numberFiles != 0){
-
-         printf("\nNumber of files: %d\n", numberFiles);
 
         for(i = 0; i < numberFiles; i++){
 
@@ -325,6 +332,7 @@ boolean check_text(char* string){
     }
 
 }
+
 void handle_yes(char** commands){
 
     signal(SIGINT, signalHandler);
@@ -393,7 +401,67 @@ void handle_help(){
 
 }
 
+void break_arguments(char* commandlineInput){
 
+    /*
+    The function takes the argument line from the command line, and splits it into separate commands by |.
+    It keeps all the commands in a char double pointer
+    */
+    char* brokenByPipeCommands[100];
+
+    int i, hasPipes = 0, numberCommands = 0;
+    for(i = 0; i < 100; i++){
+
+        brokenByPipeCommands[i] = (char*)malloc(sizeof(char)*100);
+
+    }
+
+    int word = 0, letter = 0;
+    i = 0;
+
+    brokenByPipeCommands[word][letter] = commandlineInput[i];
+
+    while(commandlineInput[i] != '\0'){
+
+        if((commandlineInput[i] != '|') && (commandlineInput[i+1] != '\0')){
+
+            printf("In if: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
+            brokenByPipeCommands[word][letter] = commandlineInput[i];
+            letter++;
+
+        }else{
+
+            printf("In else: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
+            if(commandlineInput[i+1] == '\0'){
+
+                brokenByPipeCommands[word][letter] = commandlineInput[i];
+                letter++;
+
+            }
+            brokenByPipeCommands[word][letter] = '\0';
+
+            //char* token = strtok(brokenByPipeCommands[word], " ");
+            //strcpy(brokenByPipeCommands[word], token);
+
+            word++;
+            letter = 0;
+
+            numberCommands++;
+            hasPipes = 1;
+
+        }
+
+        i++;
+
+    }
+
+    for(i = 0; i < numberCommands; i++){
+
+        printf("%s ", brokenByPipeCommands[i]);
+
+    }
+
+}
 void parse_command(char** argument, char* command){
 /*
 
@@ -451,12 +519,13 @@ If that is the case, interpret
 
         printf("%s",getcwd(path, (size_t)size));
         command = readline(">");
-        parse_command(arguments, command);
+        //parse_command(arguments, command);
 
         if(strlen(command) >= 1){
 
             add_history(command);
-            work = interpret(arguments, command);
+            break_arguments(command);
+            //work = interpret(arguments, command);
 
         }
 
