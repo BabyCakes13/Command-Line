@@ -392,6 +392,7 @@ int handle_cd(char** commands){
     }
 
 }
+
 void handle_help(){
 
     printf("HELP\n");
@@ -401,15 +402,32 @@ void handle_help(){
 
 }
 
-void break_arguments(char* commandlineInput){
+int hasPipe(char* commandLineInput){
+
+    /*
+    This function checks wether the command line input has pipes
+    */
+    int i = 0;
+    int numberPipes = 0;
+
+    for(i = 0; i < 100; i++){
+
+        if(commandLineInput[i] == '|')
+            numberPipes++;
+
+    }
+
+    return numberPipes;
+
+}
+void break_arguments(char* commandlineInput, char* brokenByPipeCommands[]){
 
     /*
     The function takes the argument line from the command line, and splits it into separate commands by |.
     It keeps all the commands in a char double pointer
     */
-    char* brokenByPipeCommands[100];
 
-    int i, hasPipes = 0, numberCommands = 0;
+    int i, numberCommands = 0;
     for(i = 0; i < 100; i++){
 
         brokenByPipeCommands[i] = (char*)malloc(sizeof(char)*100);
@@ -425,13 +443,13 @@ void break_arguments(char* commandlineInput){
 
         if((commandlineInput[i] != '|') && (commandlineInput[i+1] != '\0')){
 
-            printf("In if: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
+            //printf("In if: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
             brokenByPipeCommands[word][letter] = commandlineInput[i];
             letter++;
 
         }else{
 
-            printf("In else: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
+            //printf("In else: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
             if(commandlineInput[i+1] == '\0'){
 
                 brokenByPipeCommands[word][letter] = commandlineInput[i];
@@ -440,14 +458,10 @@ void break_arguments(char* commandlineInput){
             }
             brokenByPipeCommands[word][letter] = '\0';
 
-            //char* token = strtok(brokenByPipeCommands[word], " ");
-            //strcpy(brokenByPipeCommands[word], token);
-
             word++;
             letter = 0;
 
             numberCommands++;
-            hasPipes = 1;
 
         }
 
@@ -458,6 +472,27 @@ void break_arguments(char* commandlineInput){
     for(i = 0; i < numberCommands; i++){
 
         printf("%s ", brokenByPipeCommands[i]);
+
+    }
+
+}
+
+void interpretPipe(char* commandLine){
+
+    pid_t pid;
+
+    pid = fork();
+
+    if(pid == -1){
+
+        perror("Failed to create process.\n");
+        exit(1);
+
+    }
+
+    if(pid == 0){
+
+
 
     }
 
@@ -519,13 +554,28 @@ If that is the case, interpret
 
         printf("%s",getcwd(path, (size_t)size));
         command = readline(">");
-        //parse_command(arguments, command);
 
-        if(strlen(command) >= 1){
+        int numberPipes = hasPipe(command);
+        printf("Command %s has pipes: %d\n",command, numberPipes);
 
-            add_history(command);
-            break_arguments(command);
-            //work = interpret(arguments, command);
+        if(numberPipes == 0){
+
+            parse_command(arguments, command);
+
+            if(strlen(command) >= 1){
+
+                add_history(command);
+                work = interpret(arguments, command);
+
+            }
+
+        }else{
+
+            char* brokenByPipeCommands[100];
+
+            break_arguments(command, brokenByPipeCommands);
+
+            work = interpretPipes(brokenByPipeCommands);
 
         }
 
