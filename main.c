@@ -407,6 +407,7 @@ int hasPipe(char* commandLineInput){
     /*
     This function checks wether the command line input has pipes
     */
+
     int i = 0;
     int numberPipes = 0;
 
@@ -420,45 +421,41 @@ int hasPipe(char* commandLineInput){
     return numberPipes;
 
 }
-void break_arguments(char* commandlineInput, char* brokenByPipeCommands[]){
+void separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]){
 
     /*
     The function takes the argument line from the command line, and splits it into separate commands by |.
     It keeps all the commands in a char double pointer
     */
 
-    int i, numberCommands = 0;
-    for(i = 0; i < 100; i++){
+    int i = 0, numberCommands = 0, word = 0, letter = 0;
 
-        brokenByPipeCommands[i] = (char*)malloc(sizeof(char)*100);
-
-    }
-
-    int word = 0, letter = 0;
-    i = 0;
-
-    brokenByPipeCommands[word][letter] = commandlineInput[i];
+    brokenByPipeCommands[0] = (char*)malloc(sizeof(char)*100);
 
     while(commandlineInput[i] != '\0'){
 
         if((commandlineInput[i] != '|') && (commandlineInput[i+1] != '\0')){
 
-            //printf("In if: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
             brokenByPipeCommands[word][letter] = commandlineInput[i];
             letter++;
 
         }else{
 
-            //printf("In else: word: %d; letter %d; i: %d; charachter: %c\n", word, letter, i, commandlineInput[i]);
             if(commandlineInput[i+1] == '\0'){
 
                 brokenByPipeCommands[word][letter] = commandlineInput[i];
                 letter++;
+                brokenByPipeCommands[word][letter] = '\0';
+                break;
 
             }
+
             brokenByPipeCommands[word][letter] = '\0';
 
             word++;
+
+            brokenByPipeCommands[word] = (char*)malloc(sizeof(char)*100);
+
             letter = 0;
 
             numberCommands++;
@@ -469,12 +466,6 @@ void break_arguments(char* commandlineInput, char* brokenByPipeCommands[]){
 
     }
 
-    for(i = 0; i < numberCommands; i++){
-
-        printf("%s ", brokenByPipeCommands[i]);
-
-    }
-
 }
 
 int separateCommandsBySpace(char** commands, char** brokenCommands, int noCommand){
@@ -482,19 +473,26 @@ int separateCommandsBySpace(char** commands, char** brokenCommands, int noComman
     /*
     This function separates each baby command into separate commands for execvp.
     It returns the number of words it has.
+    commands - has ls / grep text.txt / cat text.txt / sort (separate big commands)
+    brokenCommands - has ls / {grep, text.txt} / {cat, text.txt} (separate tiny commands)
+    noCommand - the number of the command relative to the |
     */
 
     int i = 0, word = 0;
 
     char* token = strtok(commands[noCommand], " ");
 
-    while(token != NULL){
+    brokenCommands[0] = (char*)malloc(sizeof(char)*100);
 
-        printf("\n%s.", token);
+    while(token != NULL){
 
         strcpy(brokenCommands[word], token);
 
+        printf("\nBabyCommand:%s ", brokenCommands[word]);
+
         word++;
+
+        brokenCommands[word] = (char*)malloc(sizeof(char)*100);
 
         token = strtok(NULL, " ");
 
@@ -506,45 +504,29 @@ int separateCommandsBySpace(char** commands, char** brokenCommands, int noComman
 
 boolean interpretPipes(char** commandLine, int number){
 
-    char* brokenCommands[100];
+    /*
+    char** commandLine - each command separated by pipes.
+    char* brokenSpace[100] - each baby command separated by spaces for execvp
+    number - number of pipes written in input
+    */
 
-    int i;
-    int numberSeparateCommands;
+    int i = 0;
 
-    for(i = 0; i < 100; i++){
+    while(i < number + 1){
 
-        brokenCommands[i] = (char*)malloc(sizeof(char)*100);
+        char* brokenSpace[100];
 
-    }
+        printf("\n\n%d.Pipe commands: %s", i, commandLine[i]);
 
-    for(i = 0; i < number + 1; i++){
+        separateCommandsBySpace(commandLine, brokenSpace, i);
 
-        numberSeparateCommands = separateCommandsBySpace(commandLine, brokenCommands, i);
-
-        printf("Command %d has %d words\n", i, numberSeparateCommands);
-
-    }
-
-
-    /*pid_t pid;
-
-    pid = fork();
-
-    if(pid == -1){
-
-        perror("Failed to create process.\n");
-        exit(1);
+        i++;
 
     }
 
-    if(pid == 0){
-
-
-
-    }*/
+    printf("\n");
 
     return true;
-
 }
 
 void parse_command(char** argument, char* command){
@@ -581,6 +563,8 @@ When all is finished, all the words in the command line are separated and put in
     *argument = '\0';
 
 }
+
+
 void open_interpreter(){
 
 /*
@@ -623,7 +607,7 @@ If that is the case, interpret
 
             char* brokenByPipeCommands[100];
 
-            break_arguments(command, brokenByPipeCommands);
+            separateCommandsByPipe(command, brokenByPipeCommands);
 
             work = interpretPipes(brokenByPipeCommands, numberPipes);
 
