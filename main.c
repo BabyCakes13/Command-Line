@@ -31,16 +31,28 @@ int main(){
 
 }
 
+void display_pointer(char** pointer){
+
+    int i = 0;
+    while(pointer[i] != NULL){
+
+        printf("\n%s ", pointer[i]);
+        i++;
+
+    }
+
+}
 boolean interpret(char** commands, char* command){
-/*
+    /*
 
-Work is the status of the program - if the while from open_interpreter() gets false, it terminates.
-We use a pipe so we can correctly pass the work from the child to the parent.
-child is the new process which handles the interpretation of the command line.
-In each case, we write into the pipe the work state, then pass it to the parent.
-In parent, we wait for the child process to finish, then we read from the pipe the work state.
+    Work is the status of the program - if the while from open_interpreter() gets false, it terminates.
+    We use a pipe so we can correctly pass the work from the child to the parent.
+    child is the new process which handles the interpretation of the command line.
+    In each case, we write into the pipe the work state, then pass it to the parent.
+    In parent, we wait for the child process to finish, then we read from the pipe the work state.
+    This is used in case there are no pipes involved.
 
-*/
+    */
 
     boolean work = true;
 
@@ -67,13 +79,13 @@ In parent, we wait for the child process to finish, then we read from the pipe t
 
         close(fd[0]); // close the reading part of the pipe
 
-        if(strcmp(command, "exit") == 0){
+        if(strcmp(commands[0], "exit") == 0){
 
             work = false;
             write(fd[1], &work, sizeof(boolean));
             close(fd[1]);
 
-        }else if(strcmp(command, "help") == 0){
+        }else if(strcmp(commands[0], "help") == 0){
 
             handle_help();
             work = true;
@@ -81,14 +93,14 @@ In parent, we wait for the child process to finish, then we read from the pipe t
             close(fd[1]);
 
 
-        }else if(strcmp(command, "yes") == 0){
+        }else if(strcmp(commands[0], "yes") == 0){
 
             work = 3;
             write(fd[1], &work, sizeof(boolean));
             close(fd[1]);
 
 
-        }else if(strcmp(command, "tee") == 0){
+        }else if(strcmp(commands[0], "tee") == 0){
 
             work = 4;
             write(fd[1], &work, sizeof(boolean));
@@ -101,7 +113,6 @@ In parent, we wait for the child process to finish, then we read from the pipe t
             close(fd[1]);
 
         }else if(strcmp(command, "cd") == 0){
-            //TODO
 
             work = 2;
             write(fd[1], &work, sizeof(boolean));
@@ -155,6 +166,12 @@ In parent, we wait for the child process to finish, then we read from the pipe t
 
 void signalHandler(int mysignal){
 
+    /*
+
+    This function sends signal when needed
+
+    */
+
     keyPressed = true;
 
 }
@@ -162,6 +179,7 @@ void signalHandler(int mysignal){
 void handle_tee(char** commands){
 
     /*
+
     This function handles the tee command.
     First, it check which of the words in the command line contain .txt, because there can be garbage values which are not taken in consideration.
     It counts how many files there are, so it knows how many files it will create.
@@ -169,6 +187,7 @@ void handle_tee(char** commands){
     If there are no files, it just lets the user write and the text will be simply outputed in command line.
     Else, we keep all the text files in an array, later opening the first file, taking the input from the command line, and close it. Then open and close the others also.
     When the C^ is pressed, we will have the written text in all files opened with tee.
+
     */
     char* textFiles[500];
     int numberFiles = 0;
@@ -305,7 +324,7 @@ void handle_tee(char** commands){
 boolean check_text(char* string){
 
     /*
-        This function checks if the arguments read from the command line represent a text file or not.
+    This function checks if the arguments read from the command line represent a text file or not.
     */
 
     int i = 0, j = 0;
@@ -334,6 +353,14 @@ boolean check_text(char* string){
 }
 
 void handle_yes(char** commands){
+
+    /*
+
+    This function handles yes command.
+    If yes is the only word in the command line, it prints 'y' until CTRL-C is hit.
+    Else, it prints the words from the command line, until CTRL-C is hit
+
+    */
 
     signal(SIGINT, signalHandler);
 
@@ -373,6 +400,12 @@ void handle_yes(char** commands){
 
 int handle_cd(char** commands){
 
+    /*
+
+    This function handles cd
+
+    */
+
     if((strcmp(commands[1], " ") == 0) || (strcmp(commands[1], "~") == 0) || (strcmp(commands[1], "") == 0 || commands[1] == NULL)){
 
         return chdir(getenv("HOME"));
@@ -381,7 +414,7 @@ int handle_cd(char** commands){
 
         if(chdir(commands[1]) != 0){
 
-            perror("Error in chdir(): ");
+            perror("Error in cd: ");
 
         }else{
 
@@ -395,6 +428,12 @@ int handle_cd(char** commands){
 
 void handle_help(){
 
+    /*
+
+    This function prints information about the program
+
+    */
+
     printf("HELP\n");
 
     printf("Type 'exit' to exit\n");
@@ -405,7 +444,10 @@ void handle_help(){
 int hasPipe(char* commandLineInput){
 
     /*
+
     This function checks wether the command line input has pipes
+    It returns the number of pipes in the command line input
+
     */
 
     int i = 0;
@@ -424,8 +466,10 @@ int hasPipe(char* commandLineInput){
 void separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]){
 
     /*
+
     The function takes the argument line from the command line, and splits it into separate commands by |.
     It keeps all the commands in a char double pointer
+
     */
 
     int i = 0, numberCommands = 0, word = 0, letter = 0;
@@ -468,19 +512,21 @@ void separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]
 
 }
 
-int separateCommandsBySpace(char** commands, char** brokenCommands, int noCommand){
+int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
 
     /*
-    This function separates each baby command into separate commands for execvp.
+    This function separates each simple command into separate commands for execvp.
     It returns the number of words it has.
-    commands - has ls / grep text.txt / cat text.txt / sort (separate big commands)
-    brokenCommands - has ls / {grep, text.txt} / {cat, text.txt} (separate tiny commands)
-    noCommand - the number of the command relative to the |
+    It adds a NULL for execvp
+
+    commands - has ls / cat text.txt (not separated big commands)
+    brokenCommands - has ls / {cat},{text.txt} (separate commands)
+
     */
 
     int i = 0, word = 0;
 
-    char* token = strtok(commands[noCommand], " ");
+    char* token = strtok(commands, " ");
 
     brokenCommands[0] = (char*)malloc(sizeof(char)*100);
 
@@ -488,7 +534,44 @@ int separateCommandsBySpace(char** commands, char** brokenCommands, int noComman
 
         strcpy(brokenCommands[word], token);
 
-        printf("\nBabyCommand:%s ", brokenCommands[word]);
+        word++;
+
+        brokenCommands[word] = (char*)malloc(sizeof(char)*100);
+
+        token = strtok(NULL, " ");
+
+    }
+
+    brokenCommands[word] = (char*)malloc(sizeof(char)*100);
+    brokenCommands[word] = NULL;
+
+    return word;
+
+}
+
+int separateCommandsBySpacePipe(char* commands, char** brokenCommands, int noCommand){
+
+    /*
+
+    This function separates each baby command into separate commands for execvp
+    It returns the number of words it has.
+    It adds NULL charachter to the end, for execvp
+
+    commands - has ls / grep text.txt / cat text.txt / sort (separate big commands)
+    brokenCommands - has ls / {grep, text.txt} / {cat, text.txt} (separate tiny commands)
+    noCommand - the number of the command relative to the |
+
+    */
+
+    int i = 0, word = 0;
+
+    char* token = strtok(commands, " ");
+
+    brokenCommands[0] = (char*)malloc(sizeof(char)*100);
+
+    while(token != NULL){
+
+        strcpy(brokenCommands[word], token);
 
         word++;
 
@@ -502,31 +585,91 @@ int separateCommandsBySpace(char** commands, char** brokenCommands, int noComman
 
 }
 
+
+
 boolean interpretPipes(char** commandLine, int number){
 
     /*
+
+    This function handles the case when there are pipes in the command line.
+    It takes as argument the separated big commands from the input (separated by | )
+    Then it creates a process united by a pipe for each separated command get gotten by separation, except the last one, which doesn't need another pipe.
+    The parent just waits for the child to finish.
+    The main child handles each big command - it creates another process for each, then runs execvp on it, putting the result in the write part of the pipe, so the other process
+    will be able to retrieve the information by the read part.
     char** commandLine - each command separated by pipes.
     char* brokenSpace[100] - each baby command separated by spaces for execvp
     number - number of pipes written in input
+
     */
 
     int i = 0;
 
-    while(i < number + 1){
+    char* brokenSpace[1000];
 
-        char* brokenSpace[100];
+    pid_t id = fork();
 
-        printf("\n\n%d.Pipe commands: %s", i, commandLine[i]);
+    if(id < 0){
 
-        separateCommandsBySpace(commandLine, brokenSpace, i);
+        perror("\nFailed to create fork.");
+        exit(1);
 
-        i++;
+    }else{
+
+        if(id > 0){
+
+            wait(&id);
+            return true;
+
+        }else{
+
+            int i;
+
+            for(i = 0; i < number; i++){
+
+                int pip[2];
+
+                if(pipe(pip) < 0){
+
+                    perror("\nFailed to create pipe");
+                    exit(2);
+
+                }else{
+
+                    if(fork() == 0){
+
+                        dup2(pip[1], 1);
+                        close(pip[0]);
+
+                        int numberSimpleCommands = separateCommandsBySpaceSimple(commandLine[i], brokenSpace);
+
+                        if(execvp(brokenSpace[0], brokenSpace) < 0){
+
+                            perror("\nFailed to execvp");
+                            exit(3);
+
+                        }
+
+                    }
+
+                    dup2(pip[0], 0);
+
+                    close(pip[1]);
+
+                    wait(&id);
+
+                }
+
+            }
+
+            int numberSimpleCommands = separateCommandsBySpaceSimple(commandLine[i], brokenSpace);
+
+            execvp(brokenSpace[0], brokenSpace);
+
+        }
 
     }
 
-    printf("\n");
-
-    return true;
 }
 
 void parse_command(char** argument, char* command){
@@ -559,7 +702,6 @@ When all is finished, all the words in the command line are separated and put in
         }
     }
 
-
     *argument = '\0';
 
 }
@@ -587,14 +729,14 @@ If that is the case, interpret
     while(work){
 
         printf("%s",getcwd(path, (size_t)size));
+
         command = readline(">");
 
         int numberPipes = hasPipe(command);
-        printf("Command %s has pipes: %d\n",command, numberPipes);
 
         if(numberPipes == 0){
 
-            parse_command(arguments, command);
+           separateCommandsBySpaceSimple(command, arguments);
 
             if(strlen(command) >= 1){
 
