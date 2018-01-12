@@ -477,9 +477,56 @@ void break_arguments(char* commandlineInput, char* brokenByPipeCommands[]){
 
 }
 
-void interpretPipe(char* commandLine){
+int separateCommandsBySpace(char** commands, char** brokenCommands, int noCommand){
 
-    pid_t pid;
+    /*
+    This function separates each baby command into separate commands for execvp.
+    It returns the number of words it has.
+    */
+
+    int i = 0, word = 0;
+
+    char* token = strtok(commands[noCommand], " ");
+
+    while(token != NULL){
+
+        printf("\n%s.", token);
+
+        strcpy(brokenCommands[word], token);
+
+        word++;
+
+        token = strtok(NULL, " ");
+
+    }
+
+    return word;
+
+}
+
+boolean interpretPipes(char** commandLine, int number){
+
+    char* brokenCommands[100];
+
+    int i;
+    int numberSeparateCommands;
+
+    for(i = 0; i < 100; i++){
+
+        brokenCommands[i] = (char*)malloc(sizeof(char)*100);
+
+    }
+
+    for(i = 0; i < number + 1; i++){
+
+        numberSeparateCommands = separateCommandsBySpace(commandLine, brokenCommands, i);
+
+        printf("Command %d has %d words\n", i, numberSeparateCommands);
+
+    }
+
+
+    /*pid_t pid;
 
     pid = fork();
 
@@ -494,9 +541,12 @@ void interpretPipe(char* commandLine){
 
 
 
-    }
+    }*/
+
+    return true;
 
 }
+
 void parse_command(char** argument, char* command){
 /*
 
@@ -575,7 +625,7 @@ If that is the case, interpret
 
             break_arguments(command, brokenByPipeCommands);
 
-            work = interpretPipes(brokenByPipeCommands);
+            work = interpretPipes(brokenByPipeCommands, numberPipes);
 
         }
 
