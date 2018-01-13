@@ -1,1 +1,13 @@
--rw-r--r-- 1 babycakes babycakes 0 ian 13 16:30 maria.txt
+a
+b
+c
+d
+e
+f
+x
+x
+x
+i
+i
+i
+

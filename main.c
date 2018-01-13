@@ -554,23 +554,27 @@ int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
 
 void add_redirect(int nrsimpleCommands,char** simpleCommands){
 
-    int i;
+    int i = 0, maiMic, maiMare;
 
-    for(i = 0; i < nrsimpleCommands; i++){
+    while(i < nrsimpleCommands){
 
-        if(strcmp(simpleCommands[i], "<") == 0){
+        if(strcmp(simpleCommands[i], ">") == 0){
 
-            int maiMic = open(simpleCommands[++i], O_RDONLY);
-            dup2(maiMic, STDIN_FILENO);
-            close(maiMic);
-
-        }else if(strcmp(simpleCommands[i], ">") == 0){
-
-            int maiMare = creat(simpleCommands[++i], 0644);
+            i++;
+            maiMare = creat(simpleCommands[i], 0644);
             dup2(maiMare, STDOUT_FILENO);
             close(maiMare);
 
+        }else if(strcmp(simpleCommands[i], "<") == 0){
+
+            i++;
+            maiMic = open(simpleCommands[i], O_RDONLY);
+            dup2(maiMic, STDIN_FILENO);
+            close(maiMic);
+
         }
+
+        i++;
 
     }
 
@@ -578,14 +582,16 @@ void add_redirect(int nrsimpleCommands,char** simpleCommands){
 
 void add_redirect_check(int nrsimpleCommands, char** simpleCommands, char* simpleCommandsHolder[]){
 
-    int i;
+    int i = 0;
 
-    for(i = 0; i < nrsimpleCommands; i++){
+    while(i < nrsimpleCommands){
 
-        if(strcmp(simpleCommands[i], "<") == 0 || strcmp(simpleCommands[i], "<") == 0)
+        if(strcmp(simpleCommands[i], "<") == 0 || strcmp(simpleCommands[i], ">") == 0)
             break;
 
         simpleCommandsHolder[i] = simpleCommands[i];
+
+        i++;
 
     }
 
@@ -677,6 +683,7 @@ boolean interpretPipes(char** commandLine, int number){
             char* redirectCommands[numberSimpleCommands + 1];
 
             add_redirect(numberSimpleCommands, brokenSpace);
+
             add_redirect_check(numberSimpleCommands, brokenSpace, redirectCommands);
 
             execvp(redirectCommands[0], redirectCommands);
@@ -689,14 +696,14 @@ boolean interpretPipes(char** commandLine, int number){
 
 void open_interpreter(){
 
-/*
-Command is the written command in the terminal
-Arguments is breaking the command in words
-While work is true, the program is still running
-We read the command using readline, then parse it with the parse_command()
-we add history only if there is at least one character written
-If that is the case, interpret
-*/
+    /*
+    Command is the written command in the terminal
+    Arguments is breaking the command in words
+    While work is true, the program is still running
+    We read the command using readline, then parse it with the parse_command()
+    we add history only if there is at least one character written
+    If that is the case, interpret
+    */
 
     boolean work = true;
     char* command;
@@ -730,8 +737,6 @@ If that is the case, interpret
             add_history(command);
 
             char* brokenByPipeCommands[100];
-            char* brokenBySpaceCommands[1000];
-            char* redirect[100];
 
             int numberBigArguments = separateCommandsByPipe(command, brokenByPipeCommands);
 

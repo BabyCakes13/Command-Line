@@ -1,0 +1,36 @@
+adam.txt
+adianrniadkj.txt
+adi.txt
+animale.txt
+are.txt
+bin
+cat.txt
+Command Line Interpreter.cbp
+Command Line Interpreter.depend
+Command Line Interpreter.layout
+Command Line Interpreter.zip
+dirlist.txt
+ea.txt
+help.c
+help.txt
+hey.txt
+kiki.txt
+lsssss.txt
+ls.txt
+main.c
+main.o
+maria.txt
+new1.txt
+new2.txt
+new3.txt
+obj
+-ouput
+outptut
+output
+-output
+output.c
+text.txt
+thie
+thisshit.txt
+this.txt
+utput
