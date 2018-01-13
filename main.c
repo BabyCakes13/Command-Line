@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <fcntl.h>
 
 typedef enum{ false, true} boolean;
 
@@ -36,7 +37,7 @@ void display_pointer(char** pointer){
     int i = 0;
     while(pointer[i] != NULL){
 
-        printf("\n%s ", pointer[i]);
+        printf("\n%d.%s ", i, pointer[i]);
         i++;
 
     }
@@ -44,14 +45,12 @@ void display_pointer(char** pointer){
 }
 boolean interpret(char** commands, char* command){
     /*
-
     Work is the status of the program - if the while from open_interpreter() gets false, it terminates.
     We use a pipe so we can correctly pass the work from the child to the parent.
     child is the new process which handles the interpretation of the command line.
     In each case, we write into the pipe the work state, then pass it to the parent.
     In parent, we wait for the child process to finish, then we read from the pipe the work state.
     This is used in case there are no pipes involved.
-
     */
 
     boolean work = true;
@@ -167,9 +166,7 @@ boolean interpret(char** commands, char* command){
 void signalHandler(int mysignal){
 
     /*
-
     This function sends signal when needed
-
     */
 
     keyPressed = true;
@@ -179,7 +176,6 @@ void signalHandler(int mysignal){
 void handle_tee(char** commands){
 
     /*
-
     This function handles the tee command.
     First, it check which of the words in the command line contain .txt, because there can be garbage values which are not taken in consideration.
     It counts how many files there are, so it knows how many files it will create.
@@ -187,7 +183,6 @@ void handle_tee(char** commands){
     If there are no files, it just lets the user write and the text will be simply outputed in command line.
     Else, we keep all the text files in an array, later opening the first file, taking the input from the command line, and close it. Then open and close the others also.
     When the C^ is pressed, we will have the written text in all files opened with tee.
-
     */
     char* textFiles[500];
     int numberFiles = 0;
@@ -355,11 +350,9 @@ boolean check_text(char* string){
 void handle_yes(char** commands){
 
     /*
-
     This function handles yes command.
     If yes is the only word in the command line, it prints 'y' until CTRL-C is hit.
     Else, it prints the words from the command line, until CTRL-C is hit
-
     */
 
     signal(SIGINT, signalHandler);
@@ -401,9 +394,7 @@ void handle_yes(char** commands){
 int handle_cd(char** commands){
 
     /*
-
     This function handles cd
-
     */
 
     if((strcmp(commands[1], " ") == 0) || (strcmp(commands[1], "~") == 0) || (strcmp(commands[1], "") == 0 || commands[1] == NULL)){
@@ -429,9 +420,7 @@ int handle_cd(char** commands){
 void handle_help(){
 
     /*
-
     This function prints information about the program
-
     */
 
     printf("HELP\n");
@@ -444,10 +433,8 @@ void handle_help(){
 int hasPipe(char* commandLineInput){
 
     /*
-
     This function checks wether the command line input has pipes
     It returns the number of pipes in the command line input
-
     */
 
     int i = 0;
@@ -463,13 +450,27 @@ int hasPipe(char* commandLineInput){
     return numberPipes;
 
 }
-void separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]){
+
+int hasRedirect(char* commandLineInput){
+
+    int i = 0;
+    int numberRedirect = 0;
+
+    for(i = 0; i < 100; i++){
+
+        if(commandLineInput[i] == '<' || commandLineInput[i] == '>')
+            numberRedirect++;
+
+    }
+
+    return numberRedirect;
+
+}
+int separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]){
 
     /*
-
     The function takes the argument line from the command line, and splits it into separate commands by |.
     It keeps all the commands in a char double pointer
-
     */
 
     int i = 0, numberCommands = 0, word = 0, letter = 0;
@@ -510,6 +511,10 @@ void separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]
 
     }
 
+    numberCommands++;
+
+    return numberCommands;
+
 }
 
 int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
@@ -518,10 +523,8 @@ int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
     This function separates each simple command into separate commands for execvp.
     It returns the number of words it has.
     It adds a NULL for execvp
-
     commands - has ls / cat text.txt (not separated big commands)
     brokenCommands - has ls / {cat},{text.txt} (separate commands)
-
     */
 
     int i = 0, word = 0;
@@ -549,48 +552,50 @@ int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
 
 }
 
-int separateCommandsBySpacePipe(char* commands, char** brokenCommands, int noCommand){
+void add_redirect(int nrsimpleCommands,char** simpleCommands){
 
-    /*
+    int i;
 
-    This function separates each baby command into separate commands for execvp
-    It returns the number of words it has.
-    It adds NULL charachter to the end, for execvp
+    for(i = 0; i < nrsimpleCommands; i++){
 
-    commands - has ls / grep text.txt / cat text.txt / sort (separate big commands)
-    brokenCommands - has ls / {grep, text.txt} / {cat, text.txt} (separate tiny commands)
-    noCommand - the number of the command relative to the |
+        if(strcmp(simpleCommands[i], "<") == 0){
 
-    */
+            int maiMic = open(simpleCommands[++i], O_RDONLY);
+            dup2(maiMic, STDIN_FILENO);
+            close(maiMic);
 
-    int i = 0, word = 0;
+        }else if(strcmp(simpleCommands[i], ">") == 0){
 
-    char* token = strtok(commands, " ");
+            int maiMare = creat(simpleCommands[++i], 0644);
+            dup2(maiMare, STDOUT_FILENO);
+            close(maiMare);
 
-    brokenCommands[0] = (char*)malloc(sizeof(char)*100);
-
-    while(token != NULL){
-
-        strcpy(brokenCommands[word], token);
-
-        word++;
-
-        brokenCommands[word] = (char*)malloc(sizeof(char)*100);
-
-        token = strtok(NULL, " ");
+        }
 
     }
 
-    return word;
-
 }
 
+void add_redirect_check(int nrsimpleCommands, char** simpleCommands, char* simpleCommandsHolder[]){
 
+    int i;
+
+    for(i = 0; i < nrsimpleCommands; i++){
+
+        if(strcmp(simpleCommands[i], "<") == 0 || strcmp(simpleCommands[i], "<") == 0)
+            break;
+
+        simpleCommandsHolder[i] = simpleCommands[i];
+
+    }
+
+    simpleCommandsHolder[i] = NULL;
+
+}
 
 boolean interpretPipes(char** commandLine, int number){
 
     /*
-
     This function handles the case when there are pipes in the command line.
     It takes as argument the separated big commands from the input (separated by | )
     Then it creates a process united by a pipe for each separated command get gotten by separation, except the last one, which doesn't need another pipe.
@@ -600,7 +605,6 @@ boolean interpretPipes(char** commandLine, int number){
     char** commandLine - each command separated by pipes.
     char* brokenSpace[100] - each baby command separated by spaces for execvp
     number - number of pipes written in input
-
     */
 
     int i = 0;
@@ -643,7 +647,13 @@ boolean interpretPipes(char** commandLine, int number){
 
                         int numberSimpleCommands = separateCommandsBySpaceSimple(commandLine[i], brokenSpace);
 
-                        if(execvp(brokenSpace[0], brokenSpace) < 0){
+                        char* redirectCommands[numberSimpleCommands + 1];
+
+                        add_redirect(numberSimpleCommands, brokenSpace); // open the file after <
+
+                        add_redirect_check(numberSimpleCommands, brokenSpace, redirectCommands); // execute what is before <
+
+                        if(execvp(redirectCommands[0], redirectCommands) < 0){
 
                             perror("\nFailed to execvp");
                             exit(3);
@@ -664,60 +674,28 @@ boolean interpretPipes(char** commandLine, int number){
 
             int numberSimpleCommands = separateCommandsBySpaceSimple(commandLine[i], brokenSpace);
 
-            execvp(brokenSpace[0], brokenSpace);
+            char* redirectCommands[numberSimpleCommands + 1];
+
+            add_redirect(numberSimpleCommands, brokenSpace);
+            add_redirect_check(numberSimpleCommands, brokenSpace, redirectCommands);
+
+            execvp(redirectCommands[0], redirectCommands);
 
         }
 
     }
 
 }
-
-void parse_command(char** argument, char* command){
-/*
-
-This function parses the line given in the arguments, so that execpv will have the separated words in order to work.
-The first while will exit when the command has been read completely - when it gets to the terminator of the command.
-The second while separates the command into words - when it finds one of \t,\n or space, it terminates the line by adding a terminator, then puts it in arguent.
-The argument will have a char array (double poiner char) which will keep all the words in the command separated.
-The third while goes to the next word in the command.
-When all is finished, all the words in the command line are separated and put into the char array.
-
-*line = line[this]
-
-*/
-    while(*command != '\0'){
-
-        while(*command == ' ' || *command == '\t' || *command == '\n'){
-
-            *command++ = '\0';
-
-        }
-
-        *argument++ = command;
-
-        while(*command != '\0' && *command != '\t' && *command != '\n' && *command != ' '){
-
-            command++;
-
-        }
-    }
-
-    *argument = '\0';
-
-}
-
 
 void open_interpreter(){
 
 /*
-
 Command is the written command in the terminal
 Arguments is breaking the command in words
 While work is true, the program is still running
 We read the command using readline, then parse it with the parse_command()
 we add history only if there is at least one character written
 If that is the case, interpret
-
 */
 
     boolean work = true;
@@ -733,23 +711,29 @@ If that is the case, interpret
         command = readline(">");
 
         int numberPipes = hasPipe(command);
+        int numberRedirect = hasRedirect(command);
 
-        if(numberPipes == 0){
+        if(numberPipes == 0 && numberRedirect == 0){
 
            separateCommandsBySpaceSimple(command, arguments);
 
             if(strlen(command) >= 1){
 
                 add_history(command);
+
                 work = interpret(arguments, command);
 
             }
 
         }else{
 
-            char* brokenByPipeCommands[100];
+            add_history(command);
 
-            separateCommandsByPipe(command, brokenByPipeCommands);
+            char* brokenByPipeCommands[100];
+            char* brokenBySpaceCommands[1000];
+            char* redirect[100];
+
+            int numberBigArguments = separateCommandsByPipe(command, brokenByPipeCommands);
 
             work = interpretPipes(brokenByPipeCommands, numberPipes);
 
@@ -760,4 +744,3 @@ If that is the case, interpret
     free(command);
 
 }
-
