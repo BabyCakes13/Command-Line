@@ -319,9 +319,9 @@ void handle_help(){
 
 }
 
-void handle_cat(char** commands, int simpleCommands){
+boolean handle_cat(char** commands, int simpleCommands){
 
-    int i = 0, flagb = 0, flage = 0, flagn = 0, flags = 0, linenumber = 0;
+    int i = 0, flagb = 0, flage = 0, flagn = 0, flags = 0, linenumber = 0, lineBefore = 1;
     ssize_t read;
     size_t length = 0;
     char* line = NULL;
@@ -356,14 +356,14 @@ void handle_cat(char** commands, int simpleCommands){
 
         if(check_text(commands[i])){
 
-            if((file = fopen(commands[i], "r")) < 0){
+            if((file = fopen(commands[i], "r")) == NULL){
 
                 perror("\nError in 'cat': failed to open file for reading\n");
-                exit(6);
+                return true;
 
             }
 
-            linenumber = 0;
+            linenumber = 0; lineBefore = 1;
 
             while((read = getline(&line, &length, file)) != -1){
 
@@ -387,15 +387,181 @@ void handle_cat(char** commands, int simpleCommands){
 
                 }else if(flagb == 0 && flage == 0 && flagn == 1 && flags == 0){
 
-
+                    linenumber++;
+                    printf("\t%d %s", linenumber, line);
 
                 }else if(flagb == 0 && flage == 0 && flagn == 0 && flags == 1 && hasText(line) == 0){
 
+                    if(lineBefore == 1){
 
+                        printf("%s", line);
+
+                    }
+
+                    lineBefore = 0;
 
                 }else if(flagb == 0 && flage == 0 && flagn == 0 && flags == 1 && hasText(line) == 1){
 
+                    printf("%s", line);
+                    lineBefore = 1;
 
+                }else if(flagb == 1 && flage == 1 && flagn == 0 && flags == 0 && hasText(line) == 1){
+
+                    linenumber++;
+                    line[strlen(line) - 1] = '$';
+                    printf("\t%d %s\n", linenumber, line);
+
+                }else if(flagb == 1 && flage == 1 && flagn == 0 && flags == 0 && hasText(line) == 0){
+
+                    line[strlen(line) - 1] = '$';
+                    printf("%s\n", line);
+
+                }else if(flagb == 1 && flage == 0 && flagn == 1 && flags == 0 && hasText(line) == 0){
+
+                    printf("%s", line);
+
+                }else if(flagb == 1 && flage == 0 && flagn == 1 && flags == 0 && hasText(line) == 1){
+
+                    linenumber++;
+                    printf("\t%d %s", linenumber, line);
+
+                }else if(flagb == 1 && flage == 0 && flagn == 0 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        printf("%s", line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 1 && flage == 0 && flagn == 0 && flags == 1 && hasText(line) == 1){
+
+                    linenumber++;
+                    printf("\t%d %s", linenumber, line);
+                    lineBefore = 1;
+
+                }else if(flagb == 0 && flage == 1 && flagn == 1 && flags == 0){
+
+                    linenumber++;
+                    line[strlen(line) - 1] = '$';
+                    printf("\t%d %s\n", linenumber, line);
+
+                }else if(flagb == 0 && flage == 1 && flagn == 0 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        line[strlen(line) - 1] = '$';
+                        printf("%s\n", line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 0 && flage == 1 && flagn == 0 && flags == 1 && hasText(line) == 1){
+
+                    line[strlen(line) - 1] = '$';
+                    printf("%s\n", line);
+                    lineBefore = 1;
+
+                }else if(flagb == 0 && flage == 0 && flagn == 1 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        linenumber++;
+                        printf("\t%d %s", linenumber, line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 0 && flage == 0 && flagn == 1 && flags == 1 && hasText(line) == 1){
+
+                    linenumber++;
+                    printf("\t%d %s", linenumber, line);
+                    lineBefore = 1;
+
+                }else if(flagb == 1 && flage == 1 && flagn == 1 && flags == 0 && hasText(line) == 1){
+
+                    linenumber++;
+                    line[strlen(line) - 1] = '$';
+                    printf("\t%d %s\n", linenumber, line);
+
+                }else if(flagb == 1 && flage == 1 && flagn == 1 && flags == 0 && hasText(line) == 0){
+
+                    line[strlen(line) - 1] = '$';
+                    printf("%s\n", line);
+
+                }else if(flagb == 1 && flage == 0 && flagn == 1 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        printf("%s", line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 1 && flage == 0 && flagn == 1 && flags == 1 && hasText(line) == 1){
+
+                    linenumber++;
+                    printf("\t%d %s", linenumber, line);
+                    lineBefore = 1;
+
+                }else if(flagb == 1 && flage == 1 && flagn == 0 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        line[strlen(line) - 1] = '$';
+                        printf("%s\n", line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 1 && flage == 1 && flagn == 0 && flags == 1 && hasText(line) == 1){
+
+                    linenumber++;
+                    line[strlen(line) - 1] = '$';
+                    printf("\t%d %s\n", linenumber, line);
+                    lineBefore = 1;
+
+                }else if(flagb == 0 && flage == 1 && flagn == 1 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        linenumber++;
+                        line[strlen(line) - 1] = '$';
+                        printf("\t%d %s\n", linenumber, line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 0 && flage == 1 && flagn == 1 && flags == 1 && hasText(line) == 1){
+
+                    linenumber++;
+                    line[strlen(line) - 1] = '$';
+                    printf("\t%d %s\n", linenumber, line);
+                    lineBefore = 1;
+
+                }else if(flagb == 1 && flage == 1 && flagn == 1 && flags == 1 && hasText(line) == 0){
+
+                    if(lineBefore == 1){
+
+                        line[strlen(line) - 1] = '$';
+                        printf("%s\n", line);
+
+                    }
+
+                    lineBefore = 0;
+
+                }else if(flagb == 1 && flage == 1 && flagn == 1 && flags == 1 && hasText(line) == 1){
+
+                    linenumber++;
+                    line[strlen(line) - 1] = '$';
+                    printf("\t%d %s\n", linenumber, line);
+                    lineBefore = 1;
 
                 }
 
@@ -409,6 +575,7 @@ void handle_cat(char** commands, int simpleCommands){
 
     }
 
+    return true;
 
 }
 
@@ -528,8 +695,7 @@ boolean interpret(char** commands, char* command, int simpleCommands){
 
         }else if(work == 5){
 
-            handle_cat(commands, simpleCommands);
-            return true;
+            return handle_cat(commands, simpleCommands);
 
         }else{
 
