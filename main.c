@@ -12,170 +12,158 @@
 typedef enum{ false, true} boolean;
 
 static volatile int keepRunning = 1;
-
-boolean interpret(char** arguments, char* command);
-void handle_help();
-void open_interpreter();
-void parse_command(char** argument, char* command);
-int handle_cd();
 int keyPressed = 1;
-void handle_yes();
-void handle_tee();
-void signalHandler(int mysignal);
-boolean check_text(char* string);
-
-int main(){
-
-    open_interpreter();
-
-    return 0;
-
-}
 
 void display_pointer(char** pointer){
 
     int i = 0;
     while(pointer[i] != NULL){
 
-        printf("\n%d.%s ", i, pointer[i]);
+        printf("%d.%s ", i, pointer[i]);
         i++;
 
     }
 
 }
-boolean interpret(char** commands, char* command){
+
+boolean check_text(char* string){
+
     /*
-    Work is the status of the program - if the while from open_interpreter() gets false, it terminates.
-    We use a pipe so we can correctly pass the work from the child to the parent.
-    child is the new process which handles the interpretation of the command line.
-    In each case, we write into the pipe the work state, then pass it to the parent.
-    In parent, we wait for the child process to finish, then we read from the pipe the work state.
-    This is used in case there are no pipes involved.
+
+    This function checks if the arguments read from the command line represent a text file or not.
+
     */
 
-    boolean work = true;
+    int i = 0, j = 0;
+    char newString[500], dotTxt[5];
 
-    int fd[2];
+    strcpy(newString, string);
 
-    if(pipe(fd) < 0){
+    for(i = strlen(newString) - 4; i < strlen(newString); i++){
 
-        exit(-1);
-        perror("Error in pipe: ");
-
-    }
-
-    pid_t child;
-    child = fork();
-
-    if(child < 0){
-
-        perror("Error in child: ");
-        exit(-1);
+        dotTxt[j] = newString[i];
+        j++;
 
     }
+    dotTxt[j] = 0;
 
-    if(child == 0){
+    if(strcmp(dotTxt, ".txt") == 0){
 
-        close(fd[0]); // close the reading part of the pipe
-
-        if(strcmp(commands[0], "exit") == 0){
-
-            work = false;
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-        }else if(strcmp(commands[0], "help") == 0){
-
-            handle_help();
-            work = true;
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-
-        }else if(strcmp(commands[0], "yes") == 0){
-
-            work = 3;
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-
-        }else if(strcmp(commands[0], "tee") == 0){
-
-            work = 4;
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-        }else if(execvp(commands[0], commands) != -1){
-
-            work = true;
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-        }else if(strcmp(command, "cd") == 0){
-
-            work = 2;
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-        }else{
-
-            work = true;
-            printf("command does not exist\n");
-            write(fd[1], &work, sizeof(boolean));
-            close(fd[1]);
-
-        }
+        return 1;
 
     }else{
 
-        wait(&child);
+        return 0;
 
-        boolean work = true;
+    }
 
-        close(fd[1]);
-        read(fd[0], &work, sizeof(boolean));
-        close(fd[0]);
+}
 
-        if(work == 2){
+int hasText(char* line){
 
-            handle_cd(commands);
-            return true;
+    char* newLine = (char*)malloc(sizeof(char)*1000);
+    char* oldLine = (char*)malloc(sizeof(char)*1000);
 
-        }else if(work == 3){
+    strcpy(oldLine, line);
 
-            handle_yes(commands);
-            return true;
+    int i = 0, j = 0;
+    while(oldLine[i] != '\0'){
 
-        }else if(work == 4){
+        if(oldLine[i] != ' ' && oldLine[i] != '\n' && oldLine[i] != '\t'){
 
-            handle_tee(commands);
-            return true;
-
-        }else{
-
-            return work;
+            newLine[j] = oldLine[i];
+            j++;
 
         }
 
-        return work;
+        i++;
 
     }
+
+    newLine[i] = '\0';
+
+    if(strlen(newLine) > 0)
+        return 1;
 
 }
 
 void signalHandler(int mysignal){
 
     /*
+
     This function sends signal when needed
+
     */
 
     keyPressed = true;
 
 }
 
+void handle_yes(char** commands){
+
+    /*
+    This function handles yes command.
+    If yes is the only word in the command line, it prints 'y' until CTRL-C is hit.
+    Else, it prints the words from the command line, until CTRL-C is hit
+    */
+
+    signal(SIGINT, signalHandler);
+
+    keyPressed = false;
+
+    int i = 1;
+
+    char commandsArray[500];
+
+    if(commands[i] == NULL){
+
+        strcpy(commandsArray, "y");
+
+    }else{
+
+        strcpy(commandsArray, "");
+
+    }
+
+    while(commands[i] != NULL){
+
+        strcat(commandsArray, commands[i]);
+        strcat(commandsArray, " ");
+        i++;
+
+    }
+
+    while(keyPressed == false){
+
+        printf("\n%s", commandsArray);
+
+    }
+
+    keepRunning = true;
+
+}
+
+int handle_cd(char** commands){
+
+    /*
+    This function handles cd
+    */
+
+    if(commands[1] == NULL || (strcmp(commands[1], "") == 0) || (strcmp(commands[1], " ") == 0) || strcmp(commands[1], "~") == 0){
+
+        return chdir(getenv("HOME"));
+
+    }else{
+
+        return chdir(commands[1]);
+
+    }
+}
+
 void handle_tee(char** commands){
 
     /*
+
     This function handles the tee command.
     First, it check which of the words in the command line contain .txt, because there can be garbage values which are not taken in consideration.
     It counts how many files there are, so it knows how many files it will create.
@@ -183,7 +171,9 @@ void handle_tee(char** commands){
     If there are no files, it just lets the user write and the text will be simply outputed in command line.
     Else, we keep all the text files in an array, later opening the first file, taking the input from the command line, and close it. Then open and close the others also.
     When the C^ is pressed, we will have the written text in all files opened with tee.
+
     */
+
     char* textFiles[500];
     int numberFiles = 0;
     boolean isTextFile;
@@ -312,129 +302,254 @@ void handle_tee(char** commands){
 
     }
 
-
-
-}
-
-boolean check_text(char* string){
-
-    /*
-    This function checks if the arguments read from the command line represent a text file or not.
-    */
-
-    int i = 0, j = 0;
-    char newString[500], dotTxt[5];
-
-    strcpy(newString, string);
-
-    for(i = strlen(newString) - 4; i < strlen(newString); i++){
-
-        dotTxt[j] = newString[i];
-        j++;
-
-    }
-    dotTxt[j] = 0;
-
-    if(strcmp(dotTxt, ".txt") == 0){
-
-        return 1;
-
-    }else{
-
-        return 0;
-
-    }
-
-}
-
-void handle_yes(char** commands){
-
-    /*
-    This function handles yes command.
-    If yes is the only word in the command line, it prints 'y' until CTRL-C is hit.
-    Else, it prints the words from the command line, until CTRL-C is hit
-    */
-
-    signal(SIGINT, signalHandler);
-
-    keyPressed = false;
-
-    int i = 1;
-
-    char commandsArray[500];
-
-    while(commands[i] != NULL){
-
-        strcat(commandsArray, commands[i]);
-        strcat(commandsArray, " ");
-        i++;
-
-    }
-
-    while(keyPressed == false){
-
-        if(strlen(commandsArray) > 0){
-
-             printf("%s\n", commandsArray);
-
-        }else{
-
-            printf("y\n");
-
-        }
-
-
-    }
-
-    keepRunning = true;
-
-}
-
-
-int handle_cd(char** commands){
-
-    /*
-    This function handles cd
-    */
-
-    if((strcmp(commands[1], " ") == 0) || (strcmp(commands[1], "~") == 0) || (strcmp(commands[1], "") == 0 || commands[1] == NULL)){
-
-        return chdir(getenv("HOME"));
-
-    }else{
-
-        if(chdir(commands[1]) != 0){
-
-            perror("Error in cd: ");
-
-        }else{
-
-            return chdir(commands[1]);
-
-        }
-
-    }
-
 }
 
 void handle_help(){
 
     /*
+
     This function prints information about the program
+
     */
 
-    printf("HELP\n");
+    printf("\nHELP\n");
 
     printf("Type 'exit' to exit\n");
-    printf("Type commands eg: yes this, cat text.txt, ls, etc\n");
+    printf("Type commands eg: yes this, cat text.txt, ls | sort, sort < fishy.txt, ls, etc\n");
+
+}
+
+void handle_cat(char** commands, int simpleCommands){
+
+    int i = 0, flagb = 0, flage = 0, flagn = 0, flags = 0, linenumber = 0;
+    ssize_t read;
+    size_t length = 0;
+    char* line = NULL;
+
+    while(i < simpleCommands){
+
+        if(strcmp(commands[i], "-b") == 0){
+
+            flagb = 1;
+
+        }else if(strcmp(commands[i], "-E") == 0){
+
+            flage = 1;
+
+        }else if(strcmp(commands[i], "-n") == 0){
+
+            flagn = 1;
+
+        }else if(strcmp(commands[i], "-s") == 0){
+
+            flags = 1;
+
+        }
+
+        i++;
+    }
+
+    i = 1;
+    while(i < simpleCommands){
+
+        FILE* file;
+
+        if(check_text(commands[i])){
+
+            if((file = fopen(commands[i], "r")) < 0){
+
+                perror("\nError in 'cat': failed to open file for reading\n");
+                exit(6);
+
+            }
+
+            linenumber = 0;
+
+            while((read = getline(&line, &length, file)) != -1){
+
+                if(flagb == 0 && flage == 0 && flagn == 0 && flags == 0){
+
+                    printf("%s", line);
+
+                }else if(flagb == 1 && flage == 0 && flagn == 0 && flags == 0 && hasText(line) == 0){
+
+                    printf("%s", line);
+
+                }else if(flagb == 1 && flage == 0 && flagn == 0 && flags == 0 && hasText(line) == 1){
+
+                    linenumber++;
+                    printf("\t%d %s", linenumber, line);
+
+                }else if(flagb == 0 && flage == 1 && flagn == 0 && flags == 0){
+
+                    line[strlen(line) - 1] = '$';
+                    printf("%s\n", line);
+
+                }else if(flagb == 0 && flage == 0 && flagn == 1 && flags == 0){
+
+
+
+                }else if(flagb == 0 && flage == 0 && flagn == 0 && flags == 1 && hasText(line) == 0){
+
+
+
+                }else if(flagb == 0 && flage == 0 && flagn == 0 && flags == 1 && hasText(line) == 1){
+
+
+
+                }
+
+            }
+
+            fclose(file);
+
+        }
+
+        i++;
+
+    }
+
+
+}
+
+boolean interpret(char** commands, char* command, int simpleCommands){
+    /*
+    Work is the status of the program - if the while from open_interpreter() gets false, it terminates.
+    We use a pipe so we can correctly pass the work from the child to the parent.
+    child is the new process which handles the interpretation of the command line.
+    In each case, we write into the pipe the work state, then pass it to the parent.
+    In parent, we wait for the child process to finish, then we read from the pipe the work state.
+    This is used in case there are no pipes involved.
+    */
+
+    boolean work = true;
+
+    int fd[2];
+
+    if(pipe(fd) < 0){
+
+        exit(-1);
+        perror("Error in pipe: ");
+
+    }
+
+    pid_t child;
+    child = fork();
+
+    if(child < 0){
+
+        perror("Error in child: ");
+        exit(-1);
+
+    }
+
+    if(child == 0){
+
+        close(fd[0]); // close the reading part of the pipe
+
+        if(strcmp(commands[0], "exit") == 0){
+
+            work = false;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }else if(strcmp(commands[0], "help") == 0){
+
+            handle_help();
+            work = true;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+
+        }else if(strcmp(commands[0], "yes") == 0){
+
+            work = 3;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+
+        }else if(strcmp(commands[0], "tee") == 0){
+
+            work = 4;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }else if(strcmp(commands[0], "cat") == 0){
+
+            work = 5;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }else if(execvp(commands[0], commands) != -1){
+
+            work = true;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }else if(strcmp(command, "cd") == 0){
+
+            work = 2;
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }else{
+
+            work = true;
+            printf("command does not exist\n");
+            write(fd[1], &work, sizeof(boolean));
+            close(fd[1]);
+
+        }
+
+    }else{
+
+        wait(&child);
+
+        boolean work = true;
+
+        close(fd[1]);
+        read(fd[0], &work, sizeof(boolean));
+        close(fd[0]);
+
+        if(work == 2){
+
+            handle_cd(commands);
+            return true;
+
+        }else if(work == 3){
+
+            handle_yes(commands);
+            return true;
+
+        }else if(work == 4){
+
+            handle_tee(commands);
+            return true;
+
+        }else if(work == 5){
+
+            handle_cat(commands, simpleCommands);
+            return true;
+
+        }else{
+
+            return work;
+
+        }
+
+        return work;
+
+    }
 
 }
 
 int hasPipe(char* commandLineInput){
 
     /*
+
     This function checks wether the command line input has pipes
     It returns the number of pipes in the command line input
+
     */
 
     int i = 0;
@@ -453,6 +568,13 @@ int hasPipe(char* commandLineInput){
 
 int hasRedirect(char* commandLineInput){
 
+    /*
+
+    This function checks if the command line input has redirecting in it.
+    It returns the number of redirecting sybmols it has
+
+    */
+
     int i = 0;
     int numberRedirect = 0;
 
@@ -469,8 +591,10 @@ int hasRedirect(char* commandLineInput){
 int separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[]){
 
     /*
+
     The function takes the argument line from the command line, and splits it into separate commands by |.
     It keeps all the commands in a char double pointer
+
     */
 
     int i = 0, numberCommands = 0, word = 0, letter = 0;
@@ -520,14 +644,16 @@ int separateCommandsByPipe(char* commandlineInput, char* brokenByPipeCommands[])
 int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
 
     /*
+
     This function separates each simple command into separate commands for execvp.
     It returns the number of words it has.
     It adds a NULL for execvp
     commands - has ls / cat text.txt (not separated big commands)
     brokenCommands - has ls / {cat},{text.txt} (separate commands)
+
     */
 
-    int i = 0, word = 0;
+    int word = 0;
 
     char* token = strtok(commands, " ");
 
@@ -554,6 +680,13 @@ int separateCommandsBySpaceSimple(char* commands, char** brokenCommands){
 
 void add_redirect(int nrsimpleCommands,char** simpleCommands){
 
+    /*
+
+    This function handles the redirection - if > is found, then it creates a new file or open for writing it if exists
+    After opening / creating the file, it takes the lowest possible spot in file descriptor, replacing stdin / stdout. (dup2)
+
+    */
+
     int i = 0, maiMic, maiMare;
 
     while(i < nrsimpleCommands){
@@ -562,6 +695,14 @@ void add_redirect(int nrsimpleCommands,char** simpleCommands){
 
             i++;
             maiMare = creat(simpleCommands[i], 0644);
+
+            if(maiMare < 0){
+
+                perror("\nCould not create/open file");
+                exit(6);
+
+            }
+
             dup2(maiMare, STDOUT_FILENO);
             close(maiMare);
 
@@ -569,6 +710,14 @@ void add_redirect(int nrsimpleCommands,char** simpleCommands){
 
             i++;
             maiMic = open(simpleCommands[i], O_RDONLY);
+
+            if(maiMic < 0){
+
+                perror("\nCould not open file");
+                exit(6);
+
+            }
+
             dup2(maiMic, STDIN_FILENO);
             close(maiMic);
 
@@ -581,6 +730,13 @@ void add_redirect(int nrsimpleCommands,char** simpleCommands){
 }
 
 void add_redirect_check(int nrsimpleCommands, char** simpleCommands, char* simpleCommandsHolder[]){
+
+
+    /*
+
+    This function puts into a char pointer the commands before < or >, adding a NULL so execvp will process the command correctly.
+
+    */
 
     int i = 0;
 
@@ -602,6 +758,7 @@ void add_redirect_check(int nrsimpleCommands, char** simpleCommands, char* simpl
 boolean interpretPipes(char** commandLine, int number){
 
     /*
+
     This function handles the case when there are pipes in the command line.
     It takes as argument the separated big commands from the input (separated by | )
     Then it creates a process united by a pipe for each separated command get gotten by separation, except the last one, which doesn't need another pipe.
@@ -611,9 +768,8 @@ boolean interpretPipes(char** commandLine, int number){
     char** commandLine - each command separated by pipes.
     char* brokenSpace[100] - each baby command separated by spaces for execvp
     number - number of pipes written in input
-    */
 
-    int i = 0;
+    */
 
     char* brokenSpace[1000];
 
@@ -659,7 +815,35 @@ boolean interpretPipes(char** commandLine, int number){
 
                         add_redirect_check(numberSimpleCommands, brokenSpace, redirectCommands); // execute what is before <
 
-                        if(execvp(redirectCommands[0], redirectCommands) < 0){
+                        if(strcmp(redirectCommands[0], "cat") == 0){
+
+                            int l = 0;
+                            while(redirectCommands[l] != NULL)
+                                l++;
+
+                            handle_cat(redirectCommands, l);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "tee") == 0){
+
+                            handle_tee(redirectCommands);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "yes") == 0){
+
+                            handle_yes(redirectCommands);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "cd") == 0){
+
+                            handle_cd(redirectCommands);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "exit") == 0){
+
+                            exit(0);
+
+                        }else if(execvp(redirectCommands[0], redirectCommands) < 0){
 
                             perror("\nFailed to execvp");
                             exit(3);
@@ -686,13 +870,46 @@ boolean interpretPipes(char** commandLine, int number){
 
             add_redirect_check(numberSimpleCommands, brokenSpace, redirectCommands);
 
-            execvp(redirectCommands[0], redirectCommands);
+             if(strcmp(redirectCommands[0], "cat") == 0){
+
+                        int l = 0;
+                        while(redirectCommands[l] != NULL)
+                                l++;
+
+                            handle_cat(redirectCommands, l);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "exit") == 0){
+
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "tee") == 0){
+
+                            handle_tee(redirectCommands);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "yes") == 0){
+
+                            handle_yes(redirectCommands);
+                            exit(0);
+
+                        }else if(strcmp(redirectCommands[0], "cd") == 0){
+
+                            handle_cd(redirectCommands);
+                            exit(0);
+
+                        }else if(execvp(redirectCommands[0], redirectCommands) < 0){
+
+                            perror("\nFailed to execvp");
+                            exit(3);
+
+                        }
+
+            }
 
         }
 
     }
-
-}
 
 void open_interpreter(){
 
@@ -713,22 +930,30 @@ void open_interpreter(){
 
     while(work){
 
-        printf("%s",getcwd(path, (size_t)size));
+        path = (char*)malloc(sizeof(char)*1000);
+        strcpy(path, "");
+
+        printf("\n%s",getcwd(path, (size_t)size));
+
+        command = (char*)malloc(sizeof(char)*1000);
+
+        strcpy(command, "");
 
         command = readline(">");
 
         int numberPipes = hasPipe(command);
+
         int numberRedirect = hasRedirect(command);
 
         if(numberPipes == 0 && numberRedirect == 0){
 
-           separateCommandsBySpaceSimple(command, arguments);
+            add_history(command);
+
+            int simpleCommands = separateCommandsBySpaceSimple(command, arguments);
 
             if(strlen(command) >= 1){
 
-                add_history(command);
-
-                work = interpret(arguments, command);
+                work = interpret(arguments, command, simpleCommands);
 
             }
 
@@ -738,7 +963,7 @@ void open_interpreter(){
 
             char* brokenByPipeCommands[100];
 
-            int numberBigArguments = separateCommandsByPipe(command, brokenByPipeCommands);
+            separateCommandsByPipe(command, brokenByPipeCommands);
 
             work = interpretPipes(brokenByPipeCommands, numberPipes);
 
@@ -747,5 +972,13 @@ void open_interpreter(){
     }
 
     free(command);
+
+}
+
+int main(){
+
+    open_interpreter();
+
+    return 0;
 
 }

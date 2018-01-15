@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1515516468 source:/home/babycakes/Documents/Command Line Interpreter/main.c
+1516014462 source:/home/babycakes/Documents/Command Line Interpreter/main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -9,4 +9,5 @@
 	<sys/wait.h>
 	<sys/types.h>
 	<signal.h>
+	<fcntl.h>
 
