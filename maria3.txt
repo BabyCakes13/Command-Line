@@ -1,6 +1,0 @@
-	1 hey it is me
-	2 hey it is me
-	3 dadda
-	4 dadda
-	5 ^Cxt
-	6 xt

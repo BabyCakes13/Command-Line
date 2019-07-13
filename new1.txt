@@ -1,4 +1,0 @@
-this is a new file
-
-this is an append to new1
-
